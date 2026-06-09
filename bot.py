@@ -80,13 +80,23 @@ def format_summary(games_data, now):
         msg += "No edges flagged — check back later.\n"
         return msg
     msg += "Today's edges:\n\n"
-    for game, pred, odds in games_data:
+    # Sort edges by tier — tier 1 first
+    flagged = [(g, p, o) for g, p, o in games_data
+               if p and (p.get("edge_flagged") or p.get("rl_edge_flagged"))]
+    flagged.sort(key=lambda x: x[0].get("league_tier", 3))
+    current_tier = None
+    for game, pred, odds in flagged:
         if not pred:
             continue
         is_flagged = (pred.get("edge_flagged") or
                       pred.get("rl_edge_flagged"))
         if not is_flagged:
             continue
+        tier = game.get("league_tier", 3)
+        if tier != current_tier:
+            current_tier = tier
+            tier_label = {1: "⭐ Tier 1", 2: "🔸 Tier 2", 3: "🔹 Tier 3"}.get(tier, "")
+            msg += f"{'━'*20}\n{tier_label}\n"
         home = game["home_team"]
         away = game["away_team"]
         league = game["league_name"]

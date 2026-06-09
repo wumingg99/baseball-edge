@@ -18,7 +18,7 @@ RL_MIN_CONFIDENCE = 65.0
 
 # League tiers — affects model weighting
 LEAGUE_TIERS = {
-    1:  {"name": "MLB",          "country": "USA",           "tier": 1},
+    # 1: MLB excluded — covered by dedicated MLB bot
     2:  {"name": "NPB",          "country": "Japan",         "tier": 1},
     5:  {"name": "KBO",          "country": "South Korea",   "tier": 1},
     29: {"name": "CPBL",         "country": "Taiwan",        "tier": 1},

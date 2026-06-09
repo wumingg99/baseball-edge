@@ -71,6 +71,15 @@ def get_todays_games():
         except Exception as e:
             print(f"Error fetching league {league_id}: {e}")
             continue
+    # Deduplicate by game_id
+    seen = set()
+    unique_games = []
+    for g in games:
+        gid = g.get("game_id")
+        if gid not in seen:
+            seen.add(gid)
+            unique_games.append(g)
+    games = unique_games
     print(f"Fetched {len(games)} games today across {len(LEAGUE_TIERS)} leagues")
     _cache["games"] = games
     _cache["games_date"] = today

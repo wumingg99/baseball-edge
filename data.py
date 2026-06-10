@@ -12,7 +12,7 @@ def get_todays_games():
     sgt_now = datetime.now(tz)
     et_now = datetime.now(et_tz)
     from datetime import timedelta
-    if sgt_now.hour >= 11:
+    if et_now.hour >= 23:
         today = (et_now + timedelta(days=1)).strftime("%Y-%m-%d")
         _cache["showing_next_day"] = True
     else:

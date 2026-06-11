@@ -47,7 +47,9 @@ async def fetch_all_games(api_key=None):
     # Log predictions to Sheets
     try:
         from sheets import log_prediction
-        _logged = set()
+        if not hasattr(fetch_all_games, "_logged"):
+            fetch_all_games._logged = set()
+        _logged = fetch_all_games._logged
         for game, prediction, odds_entry in games_data:
             if prediction and (prediction.get("edge_flagged") or
                                prediction.get("rl_edge_flagged")):

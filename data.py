@@ -97,7 +97,7 @@ def get_team_stats(team_id, league_id, season=None):
         season = season or datetime.now(et_tz).year
         url = f"{API_BASEBALL_BASE}/teams/statistics"
         params = {"league": league_id, "season": season, "team": team_id}
-        r = requests.get(url, headers=API_HEADERS, params=params, timeout=10)
+        r = requests.get(url, headers=API_HEADERS, params=params, timeout=5)
         if r.status_code != 200:
             return result
         data = r.json().get("response", {})

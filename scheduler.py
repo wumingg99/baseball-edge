@@ -8,8 +8,11 @@ tz = pytz.timezone("Asia/Singapore")
 async def scheduled_brief(app):
     try:
         from bot import send_message, fetch_all_games, format_summary
+        from data import get_cached_games_data, preload_all_data, clear_cache
         from config import ODDS_API_KEY
         now = datetime.now(tz).strftime("%b %d, %Y")
+        # Clear cache to get fresh data for brief
+        clear_cache()
         games, games_data = await fetch_all_games(ODDS_API_KEY)
         if not games_data:
             await send_message(app,

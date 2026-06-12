@@ -112,21 +112,36 @@ def get_team_stats(team_id, league_id, season=None):
         losses = int(loses_all.get("total", 0) or 0)
         pts_for = points.get("for", {})
         pts_against = points.get("against", {})
+        from model import get_league_avg
+        league_avg = get_league_avg(league_id)
+        league_avg_per_team = league_avg / 2  # split total into per-team runs
+
+        # Empirical Bayes shrinkage — pulls small-sample teams toward
+        # league average. K=15 means a team needs ~15 games before
+        # its own stats dominate the estimate.
+        K = 15
+
+        def shrink(raw_value, default=league_avg_per_team):
+            return (games_played * raw_value + K * default) / (games_played + K)
+
+        raw_rpg = float(pts_for.get("average", {}).get("all", 4.5) or 4.5)
+        raw_rapg = float(pts_against.get("average", {}).get("all", 4.5) or 4.5)
+        raw_home_rpg = float(pts_for.get("average", {}).get("home", 4.5) or 4.5)
+        raw_away_rpg = float(pts_for.get("average", {}).get("away", 4.5) or 4.5)
+        raw_home_allowed = float(pts_against.get("average", {}).get("home", 4.5) or 4.5)
+        raw_away_allowed = float(pts_against.get("average", {}).get("away", 4.5) or 4.5)
+        raw_win_pct = wins / max(games_played, 1)
+
         result = {
-            "runs_per_game": float(
-                pts_for.get("average", {}).get("all", 4.5) or 4.5),
-            "runs_allowed_per_game": float(
-                pts_against.get("average", {}).get("all", 4.5) or 4.5),
-            "home_runs_per_game": float(
-                pts_for.get("average", {}).get("home", 4.5) or 4.5),
-            "away_runs_per_game": float(
-                pts_for.get("average", {}).get("away", 4.5) or 4.5),
-            "home_allowed_per_game": float(
-                pts_against.get("average", {}).get("home", 4.5) or 4.5),
-            "away_allowed_per_game": float(
-                pts_against.get("average", {}).get("away", 4.5) or 4.5),
-            "win_pct": round(wins / max(games_played, 1), 3),
+            "runs_per_game": round(shrink(raw_rpg), 3),
+            "runs_allowed_per_game": round(shrink(raw_rapg), 3),
+            "home_runs_per_game": round(shrink(raw_home_rpg), 3),
+            "away_runs_per_game": round(shrink(raw_away_rpg), 3),
+            "home_allowed_per_game": round(shrink(raw_home_allowed), 3),
+            "away_allowed_per_game": round(shrink(raw_away_allowed), 3),
+            "win_pct": round(shrink(raw_win_pct, default=0.5), 3),
             "games_played": games_played,
+            "data_confidence": round(min(games_played / (games_played + K), 1.0), 3),
         }
     except Exception as e:
         print(f"Team stats error {team_id}: {e}")

@@ -160,7 +160,13 @@ async def nightly_retrain(app):
         print(f"Retrain error: {e}", flush=True)
 
 def setup_scheduler(app):
-    scheduler = AsyncIOScheduler(timezone=tz)
+    scheduler = AsyncIOScheduler(
+        timezone=tz,
+        job_defaults={
+            "misfire_grace_time": 3600,
+            "coalesce": True,
+        }
+    )
 
     # New lines every 3 hours
     for hour in [0, 3, 6, 9, 12, 15, 18, 21]:

@@ -164,37 +164,42 @@ def get_odds(api_key):
     if "odds" in _cache:
         return _cache["odds"]
     odds = []
-    try:
-        url = "https://api.the-odds-api.com/v4/sports/baseball_mlb/odds"
-        params = {
-            "apiKey": api_key,
-            "regions": "us",
-            "markets": "totals,spreads",
-            "oddsFormat": "american",
-            "bookmakers": "draftkings,fanduel,betmgm"
-        }
-        r = requests.get(url, params=params, timeout=10)
-        data = r.json()
-        for game in data:
-            entry = {
-                "home_team": game.get("home_team"),
-                "away_team": game.get("away_team"),
-                "total": None,
-                "run_line": None,
+    sport_keys = ["baseball_kbo", "baseball_npb"]
+    for sport_key in sport_keys:
+        try:
+            url = f"https://api.the-odds-api.com/v4/sports/{sport_key}/odds"
+            params = {
+                "apiKey": api_key,
+                "regions": "us",
+                "markets": "totals,spreads",
+                "oddsFormat": "american",
             }
-            for bookmaker in game.get("bookmakers", [])[:1]:
-                for market in bookmaker.get("markets", []):
-                    if market["key"] == "totals":
-                        for outcome in market["outcomes"]:
-                            if outcome["name"] == "Over":
-                                entry["total"] = outcome["point"]
-                    if market["key"] == "spreads":
-                        for outcome in market["outcomes"]:
-                            if outcome["name"] == game["home_team"]:
-                                entry["run_line"] = outcome["point"]
-            odds.append(entry)
-    except Exception as e:
-        print(f"Odds error: {e}")
+            r = requests.get(url, params=params, timeout=10)
+            data = r.json()
+            if not isinstance(data, list):
+                print(f"Odds error for {sport_key}: {data}")
+                continue
+            for game in data:
+                entry = {
+                    "home_team": game.get("home_team"),
+                    "away_team": game.get("away_team"),
+                    "total": None,
+                    "run_line": None,
+                    "sport_key": sport_key,
+                }
+                for bookmaker in game.get("bookmakers", [])[:1]:
+                    for market in bookmaker.get("markets", []):
+                        if market["key"] == "totals":
+                            for outcome in market["outcomes"]:
+                                if outcome["name"] == "Over":
+                                    entry["total"] = outcome["point"]
+                        if market["key"] == "spreads":
+                            for outcome in market["outcomes"]:
+                                if outcome["name"] == game["home_team"]:
+                                    entry["run_line"] = outcome["point"]
+                odds.append(entry)
+        except Exception as e:
+            print(f"Odds error for {sport_key}: {e}")
     _cache["odds"] = odds
     return odds
 

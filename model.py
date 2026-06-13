@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats import norm
 import pickle
 import os
 from datetime import datetime
@@ -213,8 +214,10 @@ def ensemble_predict(models, X_scaled):
     weighted_prob = 0
     total_weight = 0
     yes_votes = no_votes = 0
+    probs = []
     for name, model in models.items():
         prob = model.predict_proba(X_scaled)[0][1]
+        probs.append(prob)
         w = weights.get(name, 1)
         weighted_prob += prob * w
         total_weight += w
@@ -223,7 +226,18 @@ def ensemble_predict(models, X_scaled):
         else:
             no_votes += 1
     avg_prob = weighted_prob / total_weight
-    return avg_prob, yes_votes, no_votes, len(models)
+    return avg_prob, yes_votes, no_votes, len(models), probs
+
+
+RL_SIGMA = 3.8
+
+
+def home_cover_probability(rl_prob, run_line):
+    p = min(max(rl_prob, 0.001), 0.999)
+    implied_mu = 1.5 - RL_SIGMA * norm.ppf(1 - p)
+    home_cover_line = -(run_line if run_line is not None else -1.5)
+    z = (home_cover_line - implied_mu) / RL_SIGMA
+    return float(1 - norm.cdf(z))
 
 def monte_carlo_simulate(context, total, run_line, n=10000):
     np.random.seed(None)
@@ -276,9 +290,9 @@ def predict_game(context, total, run_line):
         models_total, models_runline, scaler = load_models()
         f_scaled = scaler.transform(f)
 
-    total_prob, total_yes, total_no, total_count = ensemble_predict(
+    total_prob, total_yes, total_no, total_count, _total_probs = ensemble_predict(
         models_total, f_scaled)
-    rl_prob, rl_yes, rl_no, rl_count = ensemble_predict(
+    rl_prob, rl_yes, rl_no, rl_count, rl_probs = ensemble_predict(
         models_runline, f_scaled)
 
     mc = monte_carlo_simulate(context, total, run_line)
@@ -309,13 +323,16 @@ def predict_game(context, total, run_line):
         total_conf = round((1 - total_prob) * 100, 1)
 
     home_is_fav = (run_line or -1.5) < 0
-    if rl_prob > 0.5:
+    home_cover_prob = home_cover_probability(rl_prob, run_line)
+    if home_cover_prob > 0.5:
         rl_pred = "HOME -1.5" if home_is_fav else "HOME +1.5"
-        rl_votes = rl_yes
     else:
         rl_pred = "AWAY +1.5" if home_is_fav else "AWAY -1.5"
-        rl_votes = rl_no
-    rl_conf = round(max(rl_prob, 1 - rl_prob) * 100, 1)
+    rl_votes = sum(
+        1 for p in rl_probs
+        if (home_cover_probability(p, run_line) > 0.5) == (home_cover_prob > 0.5)
+    )
+    rl_conf = round(max(home_cover_prob, 1 - home_cover_prob) * 100, 1)
 
     home_win_prob = round(mc["home_win_prob"] * 0.6 + rl_prob * 0.4, 3)
 
